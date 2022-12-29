@@ -1,6 +1,9 @@
-use chrono::{DateTime, Datelike, Local, Weekday};
-use scraper::{ElementRef, Html, Selector};
-use std::{ops::Add, process::exit};
+use chrono::{Datelike, Local, NaiveDate, Weekday};
+use select::{
+    document::Document,
+    predicate::{Class, Name, Predicate},
+};
+use std::process::exit;
 
 #[tokio::main]
 async fn main() {
@@ -11,22 +14,26 @@ async fn main() {
         .await
         .expect("error getting response text");
 
-    let document = Html::parse_document(&res);
-    let selector = Selector::parse("table.MsoTableGrid>tbody>tr").unwrap();
-    let rows = document.select(&selector);
+    let document = Document::from(res.as_str());
+    let rows = document.find(Class("MsoTableGrid").descendant(Name("tbody").child(Name("tr"))));
 
-    let table: Vec<Vec<&str>> = rows
+    let table: Vec<Vec<String>> = rows
         .map(|row| {
-            let selector = Selector::parse("td>p:first-child").unwrap();
-            let cells = row.select(&selector);
-
-            return cells
-                .map(|cell| cell.text().next().unwrap().trim())
-                .collect();
+            row.find(Name("td"))
+                .map(|cell| {
+                    (*cell
+                        .find(Name("p"))
+                        .next()
+                        .expect("unexpected table structure")
+                        .text()
+                        .trim())
+                    .to_string()
+                })
+                .collect()
         })
         .collect();
 
-    let date = chrono::offset::Local::now();
+    let date = Local::now();
     let weekday_index = date.weekday().num_days_from_monday();
 
     if weekday_index > 4 {
@@ -37,10 +44,23 @@ async fn main() {
     let menus: Vec<Menu> = table[2]
         .iter()
         .zip(&table[3])
-        .map(|(first_course, second_course)| Menu {
-            date,
-            first_course: (first_course.to_string()),
-            second_course: second_course.to_string(),
+        .enumerate()
+        .map(|(index, (first_course, second_course))| Menu {
+            date: NaiveDate::from_isoywd_opt(
+                date.year(),
+                date.iso_week().week(),
+                match index {
+                    0 => Weekday::Mon,
+                    1 => Weekday::Tue,
+                    2 => Weekday::Wed,
+                    3 => Weekday::Thu,
+                    4 => Weekday::Fri,
+                    _ => panic!("unexpected table structure"),
+                },
+            )
+            .expect("valid date"),
+            first_course: first_course.clone(),
+            second_course: second_course.clone(),
         })
         .collect();
 
@@ -48,7 +68,7 @@ async fn main() {
 }
 
 struct Menu {
-    date: DateTime<Local>,
+    date: NaiveDate,
     first_course: String,
     second_course: String,
 }
@@ -68,11 +88,11 @@ impl Menu {
         );
         println!(
             "1. {}",
-            self.first_course /* .replace("\n", "").replace("  ", " ") */
+            self.first_course.replace("\n", "").replace("  ", " ")
         );
         println!(
             "2. {}",
-            self.second_course /* .replace("\n", "").replace("  ", " ") */
+            self.second_course.replace("\n", "").replace("  ", " ")
         );
     }
 }
