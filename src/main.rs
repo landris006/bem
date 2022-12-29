@@ -1,4 +1,4 @@
-use chrono::Datelike;
+use chrono::{Datelike, Weekday};
 use scraper::{Html, Selector};
 use std::process::exit;
 
@@ -26,7 +26,8 @@ async fn main() {
         })
         .collect();
 
-    let weekday = chrono::offset::Local::now().weekday();
+    let date = chrono::offset::Local::now();
+    let weekday = date.weekday();
     let weekday_index = weekday.num_days_from_monday();
 
     if weekday_index > 4 {
@@ -36,14 +37,19 @@ async fn main() {
 
     let first_course = table[2][weekday_index as usize];
     let second_course = table[3][weekday_index as usize];
-    println!("{}", weekday);
+
     println!(
-        "\x1b[93m{:?}\x1b[0m",
-        first_course.replace("\n", "").replace("  ", " ")
+        "\x1b[93m{} ({})\x1b[0m",
+        match weekday {
+            Weekday::Mon => "Hétfő",
+            Weekday::Tue => "Kedd",
+            Weekday::Wed => "Szerda",
+            Weekday::Thu => "Csütörtök",
+            Weekday::Fri => "Péntek",
+            _ => "",
+        },
+        date.format("%Y.%m.%d")
     );
-    println!(
-        "\x1b[93m{:?}\x1b[0m",
-        second_course.replace("\n", "").replace("  ", " ")
-    );
-    /* println!("\x1b[93m{:?}\x1b[0m"); */
+    println!("1. {}", first_course.replace("\n", "").replace("  ", " "));
+    println!("2. {}", second_course.replace("\n", "").replace("  ", " "));
 }
