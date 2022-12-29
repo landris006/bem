@@ -3,11 +3,12 @@ use select::{
     document::Document,
     predicate::{Class, Name, Predicate},
 };
-use std::process::exit;
+use std::{env, process::exit};
 
 #[tokio::main]
 async fn main() {
-    let res = reqwest::get("http://www.bemsorozo.hu/heti_menu.htm")
+    let url = "http://www.bemsorozo.hu/heti_menu.htm";
+    let res = reqwest::get(url)
         .await
         .expect("error making http GET request")
         .text()
@@ -34,12 +35,6 @@ async fn main() {
         .collect();
 
     let date = Local::now();
-    let weekday_index = date.weekday().num_days_from_monday();
-
-    if weekday_index > 4 {
-        println!("Check back on a weekday!");
-        exit(0);
-    }
 
     let menus: Vec<Menu> = table[2]
         .iter()
@@ -58,13 +53,43 @@ async fn main() {
                     _ => panic!("unexpected table structure"),
                 },
             )
-            .expect("valid date"),
+            .expect("invalid date"),
             first_course: first_course.clone(),
             second_course: second_course.clone(),
         })
         .collect();
 
-    menus.iter().for_each(|menu| menu.display());
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() < 2 {
+        let day_index = date.weekday().num_days_from_monday();
+        if day_index > 4 {
+            println!("No daily menu on weekends");
+            exit(0);
+        }
+
+        menus[day_index as usize].display();
+        exit(0);
+    }
+
+    match args[1].as_str() {
+        "all" => menus.iter().enumerate().for_each(|(index, menu)| {
+            menu.display();
+
+            if index >= menus.len() - 1 {
+                return;
+            }
+            println!("");
+            println!("");
+        }),
+        "web" => {
+            open::that(url).expect("could not open website");
+            exit(0);
+        }
+        _ => {
+            println!("No such argument");
+        }
+    }
 }
 
 struct Menu {
@@ -74,8 +99,8 @@ struct Menu {
 }
 impl Menu {
     fn display(&self) {
-        println!(
-            "\x1b[93m{} ({})\x1b[0m",
+        let header = format!(
+            "{} ({})",
             match self.date.weekday() {
                 Weekday::Mon => "Hétfő",
                 Weekday::Tue => "Kedd",
@@ -86,6 +111,8 @@ impl Menu {
             },
             self.date.format("%Y.%m.%d")
         );
+        println!("\x1b[93m{}\x1b[0m", header);
+        println!("\x1b[93m{}\x1b[0m", "‾".repeat(header.chars().count()));
         println!(
             "1. {}",
             self.first_course.replace("\n", "").replace("  ", " ")
