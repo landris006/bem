@@ -1,6 +1,6 @@
-use chrono::{Datelike, Weekday};
-use scraper::{Html, Selector};
-use std::process::exit;
+use chrono::{DateTime, Datelike, Local, Weekday};
+use scraper::{ElementRef, Html, Selector};
+use std::{ops::Add, process::exit};
 
 #[tokio::main]
 async fn main() {
@@ -27,29 +27,52 @@ async fn main() {
         .collect();
 
     let date = chrono::offset::Local::now();
-    let weekday = date.weekday();
-    let weekday_index = weekday.num_days_from_monday();
+    let weekday_index = date.weekday().num_days_from_monday();
 
     if weekday_index > 4 {
         println!("Check back on a weekday!");
         exit(0);
     }
 
-    let first_course = table[2][weekday_index as usize];
-    let second_course = table[3][weekday_index as usize];
+    let menus: Vec<Menu> = table[2]
+        .iter()
+        .zip(&table[3])
+        .map(|(first_course, second_course)| Menu {
+            date,
+            first_course: (first_course.to_string()),
+            second_course: second_course.to_string(),
+        })
+        .collect();
 
-    println!(
-        "\x1b[93m{} ({})\x1b[0m",
-        match weekday {
-            Weekday::Mon => "Hétfő",
-            Weekday::Tue => "Kedd",
-            Weekday::Wed => "Szerda",
-            Weekday::Thu => "Csütörtök",
-            Weekday::Fri => "Péntek",
-            _ => "",
-        },
-        date.format("%Y.%m.%d")
-    );
-    println!("1. {}", first_course.replace("\n", "").replace("  ", " "));
-    println!("2. {}", second_course.replace("\n", "").replace("  ", " "));
+    menus.iter().for_each(|menu| menu.display());
+}
+
+struct Menu {
+    date: DateTime<Local>,
+    first_course: String,
+    second_course: String,
+}
+impl Menu {
+    fn display(&self) {
+        println!(
+            "\x1b[93m{} ({})\x1b[0m",
+            match self.date.weekday() {
+                Weekday::Mon => "Hétfő",
+                Weekday::Tue => "Kedd",
+                Weekday::Wed => "Szerda",
+                Weekday::Thu => "Csütörtök",
+                Weekday::Fri => "Péntek",
+                _ => "",
+            },
+            self.date.format("%Y.%m.%d")
+        );
+        println!(
+            "1. {}",
+            self.first_course /* .replace("\n", "").replace("  ", " ") */
+        );
+        println!(
+            "2. {}",
+            self.second_course /* .replace("\n", "").replace("  ", " ") */
+        );
+    }
 }
