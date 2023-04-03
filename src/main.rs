@@ -1,6 +1,7 @@
 use chrono::{Datelike, Local, NaiveDate, Weekday};
 use select::{
     document::Document,
+    node::Node,
     predicate::{Class, Name, Predicate},
 };
 use std::{env, process::exit};
@@ -21,15 +22,7 @@ async fn main() {
     let table: Vec<Vec<String>> = rows
         .map(|row| {
             row.find(Name("td"))
-                .map(|cell| {
-                    (*cell
-                        .find(Name("p"))
-                        .next()
-                        .expect("unexpected table structure")
-                        .text()
-                        .trim())
-                    .to_string()
-                })
+                .map(|cell| get_text_from_cell(&cell).unwrap_or("No menu".to_string()))
                 .collect()
         })
         .collect();
@@ -90,6 +83,15 @@ async fn main() {
             println!("No such argument");
         }
     }
+}
+
+fn get_text_from_cell(cell: &Node) -> Option<String> {
+    cell.find(Name("p"))
+        .next()?
+        .text()
+        .trim()
+        .to_string()
+        .into()
 }
 
 struct Menu {
