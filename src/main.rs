@@ -86,12 +86,16 @@ async fn main() {
 }
 
 fn get_text_from_cell(cell: &Node) -> Option<String> {
-    cell.find(Name("p"))
-        .next()?
+    let text = cell
         .text()
         .trim()
-        .to_string()
-        .into()
+        .replace("-\n  ", "")
+        .replace("\u{a0}", "");
+
+    if text == "" {
+        return None;
+    }
+    Some(text)
 }
 
 struct Menu {
