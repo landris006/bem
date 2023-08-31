@@ -4,7 +4,7 @@ use select::{
     node::Node,
     predicate::{Class, Name, Predicate},
 };
-use std::{env, process::exit};
+use std::{env, process};
 
 #[tokio::main]
 async fn main() {
@@ -58,11 +58,11 @@ async fn main() {
         let day_index = date.weekday().num_days_from_monday();
         if day_index > 4 {
             println!("No daily menu on weekends");
-            exit(0);
+            process::exit(0);
         }
 
         menus[day_index as usize].display();
-        exit(0);
+        process::exit(0);
     }
 
     match args[1].as_str() {
@@ -72,12 +72,12 @@ async fn main() {
             if index >= menus.len() - 1 {
                 return;
             }
-            println!("");
-            println!("");
+            println!();
+            println!();
         }),
         "web" => {
             open::that(url).expect("could not open website");
-            exit(0);
+            process::exit(0);
         }
         _ => {
             println!("No such argument");
@@ -89,10 +89,12 @@ fn get_text_from_cell(cell: &Node) -> Option<String> {
     let text = cell
         .text()
         .trim()
+        .replace('\n', "")
         .replace("-\n  ", "")
-        .replace("\u{a0}", "");
+        .replace('\u{a0}', "")
+        .replace("  ", " ");
 
-    if text == "" {
+    if text.is_empty() {
         return None;
     }
     Some(text)
@@ -119,13 +121,7 @@ impl Menu {
         );
         println!("\x1b[93m{}\x1b[0m", header);
         println!("\x1b[93m{}\x1b[0m", "‾".repeat(header.chars().count()));
-        println!(
-            "1. {}",
-            self.first_course.replace("\n", "").replace("  ", " ")
-        );
-        println!(
-            "2. {}",
-            self.second_course.replace("\n", "").replace("  ", " ")
-        );
+        println!("1. {}", self.first_course);
+        println!("2. {}", self.second_course);
     }
 }
